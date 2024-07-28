@@ -7,7 +7,7 @@ const wpm = document.getElementById('wpm');
 document.body.appendChild(message); // Append the message element to the body
 
 // Create an array of words
-const words = ['pen', 'banana', 'count', 'pack', 'table', 'wood', 'bye', 'hello', 'bow', 'house'];
+let words = [];
 let currentWords = [];
 let consecutiveCorrect = 0;
 let consecutive = 0;
@@ -18,20 +18,19 @@ let timerInterval;
 
 let wpmCount;
 
+//fetching the words from the API
+fetch('words.txt')
+    .then(response => response.text())
+    .then(data => {
+        words = data.split(/\s+/); // Split the data by any whitespace character
+        displayRandomWords();
+    })
+    .catch(error => console.error('Error fetching words: ', error));
 
 // Event listener for Enter key press
 userInput.addEventListener('keypress', function (event) {
     if (event.key === 'Enter') {
-        const inputWords = userInput.value.split(' ');
-
-        inputWords.forEach((word, index) => {
-            if (index < currentWords.length && word === currentWords[index]) {
-                consecutiveCorrect++;
-                consecutive++;
-            } else {
-                return;
-            }
-        });
+        checkInputWords();
 
         if (consecutive > 0) {
             currentWords = currentWords.slice(consecutive);
@@ -48,6 +47,33 @@ userInput.addEventListener('keypress', function (event) {
     }
 });
 
+// Function to check input words
+function checkInputWords() {
+    const inputWords = userInput.value.split(' ');
+
+    inputWords.forEach((word, index) => {
+        if (index < currentWords.length && word === currentWords[index]) {
+            consecutiveCorrect++;
+            consecutive++;
+        } else {
+            return;
+        }
+    });
+
+    if (consecutive > 0) {
+        currentWords = currentWords.slice(consecutive);
+        const newRandomWords = randomWords(consecutive);
+        currentWords = currentWords.concat(newRandomWords);
+        message.textContent = '';
+        userInput.value = '';
+        updateCounter();
+        displayWords(currentWords);
+    } else {
+        displayWords(currentWords);
+    }
+    consecutive = 0;
+}
+
 // Event listener for input to start the timer
 userInput.addEventListener('input', function () {
     if (!timerInterval) {
@@ -57,27 +83,23 @@ userInput.addEventListener('input', function () {
 
 // Function to randomly select a word from the array
 function randomWords(count) {
-    let newWords = [];
+    const selectedWords = [];
+    const availableWords = [...words]; //create copy of the words array
 
-    while (newWords.length < count) {
-        const newWord = randomWord();
-        if (!newWords.includes(newWord)) {
-            newWords.push(newWord);
+    for (let i = 0; i < count; i++) {
+        if (availableWords.length === 0) {
+            break; //no more words to select
         }
+        const randomIndex = Math.floor(Math.random() * availableWords.length);
+        selectedWords.push(availableWords.splice(randomIndex, 1)[0]);
     }
-    return newWords;
-}
 
-// Function to randomly select a word from the array
-function randomWord() {
-    const length = words.length;
-    const index = Math.floor(Math.random() * length);
-    return words[index];
+    return selectedWords;
 }
 
 // Function to display the word on the screen
 function displayRandomWords() {
-    currentWords = randomWords(words.length);
+    currentWords = randomWords(7);
     displayWords(currentWords);
 }
 
@@ -97,6 +119,7 @@ function startTimer() {
         timeLeft--;
         timer.textContent = `Time Left: ${timeLeft}s`;
         if (timeLeft <= 0) {
+            checkInputWords();
             showResults();
         }
     }, 1000);
